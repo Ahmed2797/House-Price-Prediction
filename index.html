@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Price Prediction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            padding: 30px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px;
+            width: 100%;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 1.3em;
+            text-align: center;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+
+<h1>House Price Prediction</h1>
+
+<form id="predictionForm">
+    <label>Date of Sale:
+        <input type="date" name="date" required>
+    </label>
+    <label>Bedrooms:
+        <input type="number" name="bedrooms" required>
+    </label>
+    <label>Bathrooms:
+        <input type="number" step="0.25" name="bathrooms" required>
+    </label>
+    <label>Square Feet (Living):
+        <input type="number" name="sqft_living" required>
+    </label>
+    <label>Square Feet (Lot):
+        <input type="number" name="sqft_lot" required>
+    </label>
+    <label>Floors:
+        <input type="number" step="0.5" name="floors" required>
+    </label>
+    <label>Waterfront (0/1):
+        <input type="number" name="waterfront" min="0" max="1" required>
+    </label>
+    <label>View (0-4):
+        <input type="number" name="view" min="0" max="4" required>
+    </label>
+    <label>Condition (1-5):
+        <input type="number" name="condition" min="1" max="5" required>
+    </label>
+    <label>Sqft Above:
+        <input type="number" name="sqft_above" required>
+    </label>
+    <label>Sqft Basement:
+        <input type="number" name="sqft_basement" required>
+    </label>
+    <label>Year Built:
+        <input type="number" name="yr_built" required>
+    </label>
+    <label>Year Renovated:
+        <input type="number" name="yr_renovated" required>
+    </label>
+    <label>Street:
+        <input type="text" name="street">
+    </label>
+    <label>City:
+        <input type="text" name="city" required>
+    </label>
+    <label>StateZip:
+        <input type="text" name="statezip" required>
+    </label>
+    <label>Country:
+        <input type="text" name="country" required>
+    </label>
+    <button type="submit">Predict Price</button>
+</form>
+
+<div id="result"></div>
+
+<script>
+    const form = document.getElementById("predictionForm");
+    const resultDiv = document.getElementById("result");
+
+    // Fields that must be numeric when sent to the API
+    const numericFields = new Set([
+        'bedrooms','bathrooms','sqft_living','sqft_lot','floors',
+        'waterfront','view','condition','sqft_above','sqft_basement',
+        'yr_built','yr_renovated'
+    ]);
+
+    function buildPayload(form) {
+        const fd = new FormData(form);
+        const out = {};
+        for (const [k, v] of fd.entries()) {
+            if (v === null || v === undefined || v === '') continue;
+            if (numericFields.has(k)) {
+                const n = Number(v);
+                out[k] = Number.isNaN(n) ? null : n;
+            } else {
+                out[k] = v;
+            }
+        }
+        return out;
+    }
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        resultDiv.textContent = 'Predicting...';
+
+        const payload = buildPayload(form);
+
+        try {
+            const res = await fetch("/predict", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const errBody = await res.text();
+                resultDiv.innerHTML = `Error: ${res.status} - ${errBody}`;
+                return;
+            }
+
+            const json = await res.json();
+            if (json && typeof json.predicted_price !== 'undefined') {
+                resultDiv.innerHTML = `<strong>Predicted Price: $${Number(json.predicted_price).toLocaleString()}</strong>`;
+            } else {
+                resultDiv.innerHTML = 'Unexpected response from server';
+            }
+
+        } catch (err) {
+            console.error(err);
+            resultDiv.innerHTML = 'Network or server error. See console.';
+        }
+    });
+</script>
+
+</body>
+</html>
